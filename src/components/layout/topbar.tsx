@@ -1,6 +1,7 @@
 import { Bell, ChevronRight, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { ProfileView } from "@/lib/auth/profile";
 import { DEMO_WORKSPACE } from "@/lib/demo-data";
 
 import { MobileNavigation } from "./mobile-navigation";
@@ -20,12 +21,14 @@ function TopbarDivider({ className }: { className?: string }) {
  * Top application bar: navigation entry point for small screens, page
  * context, and global controls. Search and notifications are visibly
  * disabled future capabilities — they perform no action and imply no
- * live data.
+ * live data. The workspace breadcrumb is still demonstration data
+ * (real workspaces arrive with organizations in Phase 3); the user menu
+ * shows the signed-in identity.
  */
-export function Topbar() {
+export function Topbar({ user }: { user: ProfileView }) {
   return (
     <header className="sticky top-0 z-30 flex h-(--app-topbar-height) shrink-0 items-center gap-2 border-b border-border bg-card px-4 sm:gap-3 sm:px-6 lg:px-8">
-      <MobileNavigation />
+      <MobileNavigation user={user} />
       <TopbarDivider className="lg:hidden" />
 
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
@@ -77,7 +80,7 @@ export function Topbar() {
 
       <TopbarDivider className="hidden sm:block" />
 
-      <UserMenu />
+      <UserMenu user={user} />
     </header>
   );
 }

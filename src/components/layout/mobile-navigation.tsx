@@ -12,6 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import type { ProfileView } from "@/lib/auth/profile";
 
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarNav } from "./sidebar-nav";
@@ -20,8 +21,11 @@ import { SidebarNav } from "./sidebar-nav";
  * Mobile navigation drawer. Replaces the desktop sidebar below the `lg`
  * breakpoint. The sheet is a Radix dialog: focus is trapped while open,
  * Escape closes it, and focus returns to the toggle on close.
+ *
+ * Receives the signed-in user's view from the server shell — identity is
+ * rendered from props, never re-derived on the client.
  */
-export function MobileNavigation() {
+export function MobileNavigation({ user }: { user: ProfileView }) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -51,7 +55,7 @@ export function MobileNavigation() {
         <div className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
           <SidebarNav onNavigate={() => setOpen(false)} />
         </div>
-        <SidebarFooter />
+        <SidebarFooter user={user} />
       </SheetContent>
     </Sheet>
   );

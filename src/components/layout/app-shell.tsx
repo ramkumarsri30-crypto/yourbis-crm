@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { ProfileView } from "@/lib/auth/profile";
+
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 
@@ -7,8 +9,18 @@ import { Topbar } from "./topbar";
  * Application shell: fixed-width sidebar (desktop), sticky top bar, and
  * the main content region. All dimensions come from CSS variables defined
  * in globals.css so the layout can be tuned centrally.
+ *
+ * The `user` view comes from the server layout (verified session +
+ * profile row) and is threaded down to the identity surfaces (user menu,
+ * sidebar footer). Client components receive it as plain props — identity
+ * is never re-derived on the client.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export interface AppShellProps {
+  user: ProfileView;
+  children: ReactNode;
+}
+
+export function AppShell({ user, children }: AppShellProps) {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <a
@@ -17,9 +29,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Skip to main content
       </a>
-      <Sidebar />
+      <Sidebar user={user} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
+        <Topbar user={user} />
         <main
           id="main-content"
           tabIndex={-1}

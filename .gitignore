@@ -49,3 +49,7 @@ upload/
 
 # local agent worklog (internal bookkeeping, not part of the product)
 worklog.md
+
+# bun (sandbox tool ran bun install once; this project uses npm)
+bun.lock
+bun.lockb

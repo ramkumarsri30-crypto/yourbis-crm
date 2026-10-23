@@ -2,7 +2,7 @@
   "name": "crm-workspace",
   "version": "0.1.0",
   "private": true,
-  "description": "Multi-tenant CRM SaaS foundation (Phase 1)",
+  "description": "Multi-tenant CRM SaaS foundation (Phase 2: authentication, sessions, RLS foundation)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,6 +13,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
     "lucide-react": "^1.61.0",
@@ -26,6 +28,7 @@
     "@tailwindcss/turbopack": "^4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",

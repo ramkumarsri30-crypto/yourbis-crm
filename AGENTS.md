@@ -75,3 +75,44 @@ as blocking defects.
 - **Verification:** `npm run lint`, `npm run typecheck`, `npm test`, and
   `npm run build` must pass before any change is considered done.
   See `docs/ENGINEERING_STANDARDS.md` for the full checklist.
+
+## Authentication & sessions (Phase 2+)
+
+- **Authorization uses verified claims.** Server-side authorization
+  decisions use `supabase.auth.getClaims()` (cryptographically verified:
+  signature + expiry) — see `src/lib/auth/guards.ts`. Never authorize
+  from `getSession()`: a session object read from a cookie is not proof
+  of identity. Full user details (when needed for rendering) come from
+  `getUser()` via `getAuthUserRecordFor`.
+- **Route protection is layered.** `src/proxy.ts` (the Next.js 16
+  middleware convention) refreshes session cookies and applies
+  *optimistic* redirects; the authoritative check is `requireUser()` in
+  the `(crm)` server layout. Data operations verify independently and
+  never trust the proxy having run.
+- **Never trust client-supplied identity.** User IDs, roles, and
+  organization claims from the browser are untrusted input; the verified
+  claims (server-verified) are the only identity source. Profile rows
+  are created by the user's own RLS-constrained insert after a verified
+  session (`src/lib/auth/profile.ts`) — never by `auth.users` triggers,
+  never with a service key, never from un-sanitized metadata.
+- **Environment variables.** `NEXT_PUBLIC_SUPABASE_URL` and
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the publishable/anon key — do
+  not introduce a deprecated `NEXT_PUBLIC_SUPABASE_ANON_KEY`). The app
+  must keep building and running when they are absent: degrade to the
+  configuration notice, never crash. No service-role key exists in the
+  application for Phase 2, and it must never be `NEXT_PUBLIC_`.
+- **Redirect hygiene.** Post-auth redirects go through
+  `safeRedirectPath` (allowlist; no open redirects). Auth errors surface
+  only safe, mapped messages (`src/lib/auth/errors.ts`) — no provider
+  internals, no account-existence disclosure, identical messages for
+  unknown-email vs wrong-password, and the forgot-password flow is
+  anti-enumeration.
+- **Database security.** Migrations live in `supabase/migrations/`
+  (versioned, additive). Every application table gets RLS *enabled and
+  forced*, least-privilege column-level grants (revoke the broad
+  defaults from `anon`/`authenticated` first), policies with the
+  `(select auth.uid())` scalar-subquery form, and pgTAP tests in
+  `supabase/tests/`. No `SECURITY DEFINER` functions in application
+  schemas. See `supabase/migrations/20261023000000_profiles.sql` for the
+  reference pattern and `docs/SUPABASE_SETUP.md` for how to apply and
+  test migrations.

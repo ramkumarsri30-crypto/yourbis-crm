@@ -5,7 +5,7 @@ phase is not started until the previous one is reviewed and explicitly
 authorized. Each phase lists its scope; anything not listed is out of
 scope for that phase.
 
-## Phase 1 — Foundation (current, complete for review)
+## Phase 1 — Foundation (complete)
 
 Project scaffold, design system, responsive CRM application shell
 (sidebar, top bar, mobile drawer), reusable UI components, and an
@@ -14,15 +14,17 @@ data. Documentation, engineering standards, and automated quality
 checks (lint, typecheck, tests, build, CI workflow). No authentication,
 no database, no CRUD, no integrations.
 
-## Phase 2 — Authentication and sessions
+## Phase 2 — Authentication and sessions (current, complete for review)
 
 Supabase development project setup. Supabase Auth integration with the
-App Router (`@supabase/ssr`), session handling in middleware, sign-in
-and sign-up flows, account recovery (password reset), and email
-confirmation groundwork (Resend integration is deferred to Phase 9;
-Supabase built-in messaging is used meanwhile). Protected shell: the
-CRM route group becomes session-gated, with a real user profile menu.
-No CRM tables yet.
+App Router (`@supabase/ssr`), session handling in the Next.js 16 proxy,
+sign-in and sign-up flows, account recovery (password reset), and email
+confirmation via token-hash links (Resend integration is deferred to
+Phase 9; Supabase built-in messaging is used meanwhile). Protected
+shell: the CRM route group is session-gated, with a real user identity
+in the menu and a working sign-out. Minimal `profiles` table with
+Row Level Security and least-privilege grants; versioned migrations
+and pgTAP security tests. No CRM tables yet.
 
 ## Phase 3 — Organizations and multi-tenancy
 

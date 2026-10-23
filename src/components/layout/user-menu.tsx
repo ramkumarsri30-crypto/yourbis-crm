@@ -13,14 +13,21 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DEMO_USER } from "@/lib/demo-data";
+import type { ProfileView } from "@/lib/auth/profile";
 
 /**
- * User identity menu. The menu itself is fully functional (keyboard
- * navigation, focus management); every entry inside is honestly disabled
- * because accounts and sessions do not exist until Phase 2.
+ * User identity menu for the signed-in user. Name, email, and initials
+ * come from the server layout (verified session + profile row) — never
+ * re-derived on the client.
+ *
+ * Sign out is a real form POST to /auth/sign-out (works without JS; the
+ * route enforces same-origin and revokes the session server-side).
+ * Profile editing and preferences remain visibly disabled until their
+ * phases arrive — no fake-working controls.
  */
-export function UserMenu() {
+export function UserMenu({ user }: { user: ProfileView }) {
+  const displayName = user.displayName ?? user.email;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -31,11 +38,11 @@ export function UserMenu() {
         >
           <Avatar className="size-7">
             <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-              {DEMO_USER.initials}
+              {user.initials}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden text-sm font-medium md:inline">
-            {DEMO_USER.name}
+          <span className="hidden max-w-40 truncate text-sm font-medium md:inline">
+            {displayName}
           </span>
           <ChevronDown
             aria-hidden="true"
@@ -48,15 +55,15 @@ export function UserMenu() {
           <div className="flex items-center gap-2.5 py-0.5">
             <Avatar className="size-9">
               <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                {DEMO_USER.initials}
+                {user.initials}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-foreground">
-                {DEMO_USER.name}
+                {displayName}
               </p>
               <p className="truncate text-xs font-normal text-muted-foreground">
-                {DEMO_USER.email}
+                {user.email}
               </p>
             </div>
           </div>
@@ -64,17 +71,25 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled>
           Profile
-          <DropdownMenuShortcut>Phase 2</DropdownMenuShortcut>
+          <DropdownMenuShortcut>Phase 5</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuItem disabled>
           Preferences
           <DropdownMenuShortcut>Phase 10</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          Sign out
-          <DropdownMenuShortcut>Phase 2</DropdownMenuShortcut>
-        </DropdownMenuItem>
+        {/*
+         * Plain HTML form → POST /auth/sign-out. No JS required; the route
+         * handler validates same-origin, revokes the session on the auth
+         * server, clears cookies, and redirects to the sign-in page.
+         */}
+        <form action="/auth/sign-out" method="post">
+          <DropdownMenuItem asChild>
+            <button type="submit" className="w-full cursor-pointer">
+              Sign out
+            </button>
+          </DropdownMenuItem>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );
