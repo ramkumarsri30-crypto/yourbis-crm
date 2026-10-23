@@ -1,0 +1,223 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * CRM Workspace — Design System Tokens
+ * ------------------------------------
+ * Single source of truth for color, radius, and layout dimensions.
+ * See docs/DESIGN_SYSTEM.md for usage rules and rationale.
+ * Values in this file are hex on purpose: they are reviewable against
+ * the approved product spec rather than opaque color-space conversions.
+ */
+
+@theme inline {
+  /* Surface & text tokens */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* Brand & neutral action tokens */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* Status tokens */
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  /* Line & focus tokens */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Data visualization tokens (pipeline stages, future charts) */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Navigation tokens */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-item-hover: var(--sidebar-item-hover);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+
+  /* Radius scale (base 8px) */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Surfaces */
+  --background: #f7f8fa;
+  --foreground: #172033;
+  --card: #ffffff;
+  --card-foreground: #172033;
+  --popover: #ffffff;
+  --popover-foreground: #172033;
+
+  /* Brand & neutral actions */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #172033;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #eff4ff;
+  --accent-foreground: #1e3a8a;
+
+  /* Status */
+  --destructive: #b91c1c;
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+
+  /* Lines & focus */
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+
+  /* Data visualization */
+  --chart-1: #bfdbfe;
+  --chart-2: #93c5fd;
+  --chart-3: #60a5fa;
+  --chart-4: #2563eb;
+  --chart-5: #15803d;
+
+  /* Radius base */
+  --radius: 0.5rem;
+
+  /* Navigation */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #334155;
+  --sidebar-muted-foreground: #64748b;
+  --sidebar-accent: #eff4ff;
+  --sidebar-accent-foreground: #1d4ed8;
+  --sidebar-item-hover: #f1f5f9;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #2563eb;
+
+  /* Application layout dimensions */
+  --app-sidebar-width: 248px;
+  --app-topbar-height: 64px;
+  --app-content-max-width: 1400px;
+}
+
+/*
+ * Dark palette foundation. NOT exposed in Phase 1 (no theme toggle is
+ * shipped); defined so a future phase can introduce dark mode without
+ * redesigning the token set. See docs/DESIGN_SYSTEM.md.
+ */
+.dark {
+  --background: #0f1626;
+  --foreground: #e8ecf3;
+  --card: #172033;
+  --card-foreground: #e8ecf3;
+  --popover: #172033;
+  --popover-foreground: #e8ecf3;
+
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #e8ecf3;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e2f4d;
+  --accent-foreground: #bfdbfe;
+
+  --destructive: #ef4444;
+  --success: #22c55e;
+  --success-foreground: #052e16;
+  --warning: #f59e0b;
+  --warning-foreground: #291500;
+
+  --border: #263349;
+  --input: #263349;
+  --ring: #3b82f6;
+
+  --chart-1: #1e3a5f;
+  --chart-2: #1d4ed8;
+  --chart-3: #3b82f6;
+  --chart-4: #60a5fa;
+  --chart-5: #22c55e;
+
+  --sidebar: #131b2c;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-muted-foreground: #94a3b8;
+  --sidebar-accent: #1e2f4d;
+  --sidebar-accent-foreground: #93c5fd;
+  --sidebar-item-hover: #1e293b;
+  --sidebar-border: #263349;
+  --sidebar-ring: #3b82f6;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  ::selection {
+    @apply bg-primary/15;
+  }
+}
+
+@layer utilities {
+  /* Slim, unobtrusive scrollbars for overflow regions (sidebar, lists). */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
+/*
+ * Respect users who prefer reduced motion. All functional behavior works
+ * without animation; this collapses transition/animation durations.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
