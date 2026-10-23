@@ -108,11 +108,74 @@ as blocking defects.
   unknown-email vs wrong-password, and the forgot-password flow is
   anti-enumeration.
 - **Database security.** Migrations live in `supabase/migrations/`
-  (versioned, additive). Every application table gets RLS *enabled and
-  forced*, least-privilege column-level grants (revoke the broad
-  defaults from `anon`/`authenticated` first), policies with the
+  (versioned, additive). Every application table gets RLS *enabled*
+  (plain `ENABLE`, not `FORCE` — table-owner helpers and the audited
+  RPCs must be able to scan policy-protected tables), least-privilege
+  column-level grants (revoke the broad defaults from
+  `anon`/`authenticated` first), policies with the
   `(select auth.uid())` scalar-subquery form, and pgTAP tests in
-  `supabase/tests/`. No `SECURITY DEFINER` functions in application
-  schemas. See `supabase/migrations/20261023000000_profiles.sql` for the
-  reference pattern and `docs/SUPABASE_SETUP.md` for how to apply and
+  `supabase/tests/`. See `supabase/migrations/20261023000000_profiles.sql`
+  and `supabase/migrations/20261023000001_workspaces.sql` for the
+  reference patterns and `docs/SUPABASE_SETUP.md` for how to apply and
   test migrations.
+- **Privileged functions are the exception, and a reviewed one.**
+  `SECURITY DEFINER` appears only where plain policies cannot express
+  the rule, and always with: fixed empty `search_path`, fully qualified
+  object names, `auth.uid()`-derived identity (never caller-supplied
+  user ids or roles), minimal parameters, no dynamic SQL, default
+  `EXECUTE` revoked, and execution granted to `authenticated` only.
+  Phase 3 ships exactly three: `private.workspace_role_of(uuid)`
+  (policy helper in the non-exposed `private` schema — it is not
+  callable over the Data API) and the two audited atomic RPCs
+  `public.create_organization(text)` /
+  `public.accept_organization_invitation(text)`. Any addition to this
+  set requires the same justification and tests.
+
+## Multi-tenancy & CRM modules (Phase 3+ — permanent rules)
+
+These rules prevent the class of defects where a CRM grows duplicated
+record modules, divergent permission models, or UI features without
+persistence. They bind every future phase.
+
+1. **One canonical data model per record type.** Leads, contacts,
+   accounts, deals, activities, … each get exactly ONE table and ONE
+   server-side module (`src/lib/<module>/`). Never add a second table,
+   query set, or permission matrix for the same record type — extend
+   the existing one.
+2. **Every tenant-scoped table ships complete in its initial
+   migration.** Schema + constraints + indexes + RLS policies +
+   least-privilege grants + pgTAP security tests land together. A table
+   without policies and tests in the same migration is a blocking
+   defect, not a follow-up ticket.
+3. **Explicit foreign keys always.** Tenant-scoped rows reference
+   `public.organizations (id)`; user references point at `auth.users`.
+   No soft/id-only associations without a FK constraint.
+4. **Authorization flows through the workspace role.** Record access is
+   derived from the caller's `organization_memberships.role` via the
+   `private.workspace_role_of()` helper (or its successor) inside RLS
+   policies. Never re-implement role logic in a second place; the
+   mirror in `src/lib/workspace/roles.ts` exists only for rendering and
+   pre-checks and must stay aligned with the policies.
+5. **UI without persistence is forbidden.** No screen may render
+   record data that is not read from (or written to) the database under
+   RLS. Demo data stays clearly labeled and confined to Phase-1
+   dashboard placeholders until real modules replace it. A feature with
+   no server-side permission check is a bug regardless of how the UI
+   guards it.
+6. **List and board (Kanban) views share one data model.** Same table,
+   same policies, same queries — only the presentation differs. A
+   Kanban that reads different rows or applies different permissions
+   than its list view is a defect.
+7. **Shared interaction patterns.** Search, filtering, pagination, and
+   row actions follow the bounded-query + server-action + honest-error
+   patterns established in Phase 3 (`src/lib/workspace/queries.ts`,
+   `src/lib/workspace/actions.ts`). New modules reuse them instead of
+   inventing per-screen conventions.
+8. **Central module registry.** Navigation (`src/lib/navigation.ts`)
+   and route metadata stay the single registry of modules/screens.
+   Adding a module means updating that registry (and its pgTAP suite
+   when it owns a table) — not forking layout or shell code.
+9. **Organization-scoped queries are always bounded.** Paginated with
+   explicit `range()`/`limit()`, ordered deterministically, and indexed
+   to match the RLS predicates (see the Phase 3 index notes in the
+   workspaces migration). No unbounded `select *` from any client.

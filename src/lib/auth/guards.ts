@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -38,22 +39,30 @@ export interface AuthUserRecord extends VerifiedAuthUser {
  *
  * Safe to call from Server Components; session refresh happens in the
  * proxy, and a stale token here simply yields null.
+ *
+ * Wrapped in React `cache()`: the (crm) layout, individual pages, and
+ * server actions within one request share a SINGLE verification round
+ * trip instead of each paying one (Phase 3 latency remediation — see
+ * docs/ARCHITECTURE.md). Only usable from Server Components and Server
+ * Actions; route handlers use their own auth calls.
  */
-export async function getAuthenticatedUser(): Promise<VerifiedAuthUser | null> {
-  if (!isSupabaseConfigured()) {
-    return null;
+export const getAuthenticatedUser = cache(
+  async (): Promise<VerifiedAuthUser | null> => {
+    if (!isSupabaseConfigured()) {
+      return null;
+    }
+
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getClaims();
+
+    const claims = data?.claims;
+    if (!claims?.sub) {
+      return null;
+    }
+
+    return { id: claims.sub, email: claims.email ?? null };
   }
-
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-
-  const claims = data?.claims;
-  if (!claims?.sub) {
-    return null;
-  }
-
-  return { id: claims.sub, email: claims.email ?? null };
-}
+);
 
 /**
  * Fetches the authoritative user record from the Supabase auth server for

@@ -2,14 +2,20 @@
 
 import type { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-
-import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 /**
- * Submit button for auth forms. `useFormStatus` (inside the <form>)
- * drives the pending state: disabled + spinner + "(submitting…)"
- * announcement via aria-busy. The visible label never implies success.
+ * Shared form controls for server-action forms (auth screens and
+ * workspace screens alike).
+ *
+ * `useFormStatus` (React DOM) drives the pending state from inside the
+ * <form>: the button disables, spins, and announces "(submitting…)"
+ * immediately on submit — visible feedback well within ~100 ms, while
+ * the aria-busy label honestly indicates the network operation is still
+ * in flight. The visible label never implies success before the action
+ * returned.
  */
 export function SubmitButton({
   children,
@@ -23,7 +29,6 @@ export function SubmitButton({
       type="submit"
       aria-busy={pending || undefined}
       disabled={pending}
-      className="h-10 w-full"
       {...props}
     >
       {pending ? (

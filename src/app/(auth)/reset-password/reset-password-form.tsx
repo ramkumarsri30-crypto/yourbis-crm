@@ -4,7 +4,7 @@ import { useActionState } from "react";
 
 import { AuthFormField } from "@/components/auth/auth-form-field";
 import { PasswordInput } from "@/components/auth/password-input";
-import { FormFeedback, SubmitButton } from "@/components/auth/submit-button";
+import { FormFeedback, SubmitButton } from "@/components/shared/form-controls";
 import { useFormErrors } from "@/components/auth/use-form-errors";
 import { initialAuthFormState } from "@/lib/auth/form-state";
 import {

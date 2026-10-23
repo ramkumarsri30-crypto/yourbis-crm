@@ -46,6 +46,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     errorCode && ERROR_MESSAGES[errorCode] ? ERROR_MESSAGES[errorCode] : null;
   const configured = isSupabaseConfigured();
 
+  // Preserve the attempted destination across the sign-in ↔ sign-up
+  // hop (invitation links carry /accept-invitation?token=…). The value
+  // is untrusted here; it is re-validated with safeRedirectPath before
+  // any redirect actually uses it.
+  const signUpHref = next
+    ? `/sign-up?next=${encodeURIComponent(next)}`
+    : "/sign-up";
+
   return (
     <AuthPanel
       title="Sign in"
@@ -54,7 +62,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         <p>
           Don&apos;t have an account?{" "}
           <Link
-            href="/sign-up"
+            href={signUpHref}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Create one

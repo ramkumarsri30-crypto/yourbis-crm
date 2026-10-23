@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { AuthFormField } from "@/components/auth/auth-form-field";
-import { FormFeedback, SubmitButton } from "@/components/auth/submit-button";
+import { FormFeedback, SubmitButton } from "@/components/shared/form-controls";
 import { useFormErrors } from "@/components/auth/use-form-errors";
 import { Input } from "@/components/ui/input";
 import { initialAuthFormState } from "@/lib/auth/form-state";

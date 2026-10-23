@@ -53,3 +53,6 @@ worklog.md
 # bun (sandbox tool ran bun install once; this project uses npm)
 bun.lock
 bun.lockb
+
+# agent tooling scratch output
+tool-results/

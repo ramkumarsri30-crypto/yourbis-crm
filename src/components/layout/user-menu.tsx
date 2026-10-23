@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ProfileView } from "@/lib/auth/profile";
 
+import { SignOutMenuItem } from "./sign-out-menu-item";
+
 /**
  * User identity menu for the signed-in user. Name, email, and initials
  * come from the server layout (verified session + profile row) — never
@@ -78,17 +80,16 @@ export function UserMenu({ user }: { user: ProfileView }) {
           <DropdownMenuShortcut>Phase 10</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        {""}
         {/*
          * Plain HTML form → POST /auth/sign-out. No JS required; the route
          * handler validates same-origin, revokes the session on the auth
-         * server, clears cookies, and redirects to the sign-in page.
+         * server, clears cookies, and redirects to the sign-in page. The
+         * submit item flips into an immediate pending state while the
+         * server round trip runs (see SignOutMenuItem).
          */}
         <form action="/auth/sign-out" method="post">
-          <DropdownMenuItem asChild>
-            <button type="submit" className="w-full cursor-pointer">
-              Sign out
-            </button>
-          </DropdownMenuItem>
+          <SignOutMenuItem />
         </form>
       </DropdownMenuContent>
     </DropdownMenu>

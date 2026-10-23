@@ -71,7 +71,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "System",
     items: [
       { label: "Integrations", icon: Plug, status: "upcoming", phase: 9 },
-      { label: "Settings", icon: Settings, status: "upcoming", phase: 10 },
+      {
+        label: "Settings",
+        icon: Settings,
+        status: "available",
+        href: "/settings/workspace",
+      },
     ],
   },
 ] as const;

@@ -92,11 +92,16 @@ export async function updateSession(request: NextRequest) {
 
   if (!isAuthenticated && !isPublicPath(pathname)) {
     // Optimistic: send signed-out visitors to sign-in, preserving the
-    // destination (validated before use by safeRedirectPath).
+    // destination (validated before use by safeRedirectPath). The query
+    // string is preserved too — invitation links
+    // (/accept-invitation?token=…) must survive the sign-in round trip;
+    // searchParams.set() percent-encodes the value, and
+    // safeRedirectPath re-validates the allowlisted path and strips
+    // control characters from the search on the way back in.
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     url.search = "";
-    url.searchParams.set("next", pathname);
+    url.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(url);
   }
 

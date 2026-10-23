@@ -1,4 +1,5 @@
 import type { ProfileView } from "@/lib/auth/profile";
+import type { WorkspaceSummary } from "@/lib/workspace/context";
 
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarNav } from "./sidebar-nav";
@@ -9,7 +10,15 @@ import { SidebarNav } from "./sidebar-nav";
  * squeezed layout. Sticks to the viewport and scrolls independently when
  * the navigation outgrows the available height.
  */
-export function Sidebar({ user }: { user: ProfileView }) {
+export function Sidebar({
+  user,
+  workspaces,
+  activeWorkspaceId,
+}: {
+  user: ProfileView;
+  workspaces: WorkspaceSummary[];
+  activeWorkspaceId: string | null;
+}) {
   return (
     <aside className="sticky top-0 hidden h-screen w-(--app-sidebar-width) shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
       <div className="flex h-(--app-topbar-height) shrink-0 items-center border-b border-sidebar-border px-5">
@@ -21,7 +30,11 @@ export function Sidebar({ user }: { user: ProfileView }) {
       <div className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
         <SidebarNav />
       </div>
-      <SidebarFooter user={user} />
+      <SidebarFooter
+        user={user}
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId}
+      />
     </aside>
   );
 }

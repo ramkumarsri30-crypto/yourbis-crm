@@ -1,3 +1,7 @@
+"use client";
+
+import * as React from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import { NAV_GROUPS } from "@/lib/navigation";
@@ -9,8 +13,6 @@ interface SidebarNavProps {
    * mobile drawer to close itself after navigation.
    */
   onNavigate?: () => void;
-  /** Route currently displayed; available items matching it render as active. */
-  activeHref?: string;
 }
 
 const itemBaseClasses =
@@ -21,10 +23,16 @@ const itemBaseClasses =
  * `src/lib/navigation.ts`. Used by both the desktop sidebar and the
  * mobile navigation drawer so the two can never drift apart.
  *
+ * The active route is derived from the real pathname (client hook), so
+ * every available item highlights correctly, including nested settings
+ * routes (`/settings/...` marks the Settings entry active).
+ *
  * Upcoming items render as genuinely disabled buttons with a visible
  * "Soon" chip — they never link to a route that does not exist.
  */
-export function SidebarNav({ onNavigate, activeHref = "/" }: SidebarNavProps) {
+export function SidebarNav({ onNavigate }: SidebarNavProps) {
+  const pathname = usePathname() ?? "/";
+
   return (
     <nav aria-label="Primary">
       <ul className="flex flex-col gap-5">
@@ -38,7 +46,12 @@ export function SidebarNav({ onNavigate, activeHref = "/" }: SidebarNavProps) {
             <ul className="flex flex-col gap-0.5">
               {group.items.map((item) => {
                 const isActive =
-                  item.status === "available" && item.href === activeHref;
+                  item.status === "available" &&
+                  item.href !== undefined &&
+                  (item.href === "/"
+                    ? pathname === "/"
+                    : pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`));
 
                 if (item.status === "available" && item.href) {
                   return (

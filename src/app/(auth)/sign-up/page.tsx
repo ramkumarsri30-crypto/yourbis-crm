@@ -31,6 +31,13 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const next = firstParam(params.next);
   const configured = isSupabaseConfigured();
 
+  // Mirror of the sign-in page: keep the attempted destination across
+  // the sign-up ↔ sign-in hop so invitation links survive. Re-validated
+  // with safeRedirectPath before any redirect uses it.
+  const signInHref = next
+    ? `/sign-in?next=${encodeURIComponent(next)}`
+    : "/sign-in";
+
   return (
     <AuthPanel
       title="Create your account"
@@ -39,7 +46,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
         <p>
           Already have an account?{" "}
           <Link
-            href="/sign-in"
+            href={signInHref}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Sign in

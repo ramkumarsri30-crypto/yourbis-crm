@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { ProfileView } from "@/lib/auth/profile";
+import type { WorkspaceSummary } from "@/lib/workspace/context";
 
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -12,15 +13,24 @@ import { Topbar } from "./topbar";
  *
  * The `user` view comes from the server layout (verified session +
  * profile row) and is threaded down to the identity surfaces (user menu,
- * sidebar footer). Client components receive it as plain props — identity
- * is never re-derived on the client.
+ * sidebar footer). The `workspaces`/`activeWorkspace` views come from
+ * the server-verified membership list (Phase 3). Client components
+ * receive them as plain props — identity and membership are never
+ * re-derived on the client.
  */
 export interface AppShellProps {
   user: ProfileView;
+  workspaces: WorkspaceSummary[];
+  activeWorkspace: WorkspaceSummary | null;
   children: ReactNode;
 }
 
-export function AppShell({ user, children }: AppShellProps) {
+export function AppShell({
+  user,
+  workspaces,
+  activeWorkspace,
+  children,
+}: AppShellProps) {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <a
@@ -29,9 +39,17 @@ export function AppShell({ user, children }: AppShellProps) {
       >
         Skip to main content
       </a>
-      <Sidebar user={user} />
+      <Sidebar
+        user={user}
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspace?.id ?? null}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar user={user} />
+        <Topbar
+          user={user}
+          workspaces={workspaces}
+          activeWorkspace={activeWorkspace}
+        />
         <main
           id="main-content"
           tabIndex={-1}

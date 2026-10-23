@@ -106,11 +106,11 @@ day.
 - Phase 1 runs with zero variables configured; nothing degrades if
   they are absent.
 
-## Database migrations (policy from Phase 2/3 onward; no migrations
-exist yet)
+## Database migrations (policy from Phase 2/3 onward)
 
 - Migrations are stored in source control, ordered, and reviewed like
-  code.
+  code. Phase 2 shipped `20261023000000_profiles.sql`; Phase 3 shipped
+  `20261023000001_workspaces.sql`.
 - Every schema change is a **new** migration file. Never rewrite a
   migration that may have been applied to a shared database; ship a
   follow-up migration instead.
@@ -119,6 +119,17 @@ exist yet)
 - Every tenant-sensitive table requires RLS, and RLS policies must be
   tested with different organizations and user roles — a policy
   without a cross-tenant test does not merge.
+- **Tenant tables ship complete:** the initial migration for any new
+  organization-scoped table contains schema + constraints + indexes +
+  RLS policies + least-privilege grants, and the same pull request
+  contains its pgTAP suite in `supabase/tests/`. See the permanent
+  rules in `AGENTS.md` (“Multi-tenancy & CRM modules”).
+- `SECURITY DEFINER` functions require empty fixed `search_path`,
+  fully qualified names, `auth.uid()`-derived identity, minimal
+  parameters, no dynamic SQL, revoked default `EXECUTE`, and positive
+  grants to `authenticated` only — plus database tests proving both
+  the positive and negative paths. The current approved set is listed
+  in `AGENTS.md`.
 - Schema changes and data migrations are considered separately when a
   change touches both.
 - Destructive changes (dropping columns or tables, type narrowing)
@@ -126,6 +137,26 @@ exist yet)
   migrate → contract), never a silent rewrite.
 - Database types for TypeScript are generated from the actual schema
   (e.g. `supabase gen types`), not guessed by hand.
+
+## Server actions and mutation UX (policy from Phase 3 onward)
+
+- Every server action identifies the caller from verified claims
+  (`requireUser` / cached `getAuthenticatedUser`), validates input at
+  the boundary, and performs the mutation under the caller's own
+  RLS-filtered session. Client-supplied user ids, roles, and
+  organization ids never authorize anything.
+- Actions return mapped, safe messages (e.g.
+  `src/lib/workspace/errors.ts`); raw database errors never reach the
+  UI or logs.
+- Submit controls show immediate pending feedback (`useFormStatus` /
+  `useActionState`): disabled + spinner + honest “…” label on press,
+  success only after the action confirms. No full-page reloads for
+  mutations; `revalidatePath` refreshes the affected regions.
+- Destructive row actions use a two-step confirmation (arm → confirm)
+  or an equivalent guard, and preserve form state on failure so the
+  user can retry.
+- Invitation/secret material (raw tokens) is never logged, returned in
+  action state, or rendered; only hashed forms are stored.
 
 ## Code review
 

@@ -2,9 +2,10 @@ import { Bell, ChevronRight, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { ProfileView } from "@/lib/auth/profile";
-import { DEMO_WORKSPACE } from "@/lib/demo-data";
+import type { WorkspaceSummary } from "@/lib/workspace/context";
 
 import { MobileNavigation } from "./mobile-navigation";
+import { TopbarPageTitle } from "./topbar-page-title";
 import { UserMenu } from "./user-menu";
 
 /** Decorative vertical rule used between top bar controls. */
@@ -19,36 +20,48 @@ function TopbarDivider({ className }: { className?: string }) {
 
 /**
  * Top application bar: navigation entry point for small screens, page
- * context, and global controls. Search and notifications are visibly
- * disabled future capabilities — they perform no action and imply no
- * live data. The workspace breadcrumb is still demonstration data
- * (real workspaces arrive with organizations in Phase 3); the user menu
- * shows the signed-in identity.
+ * context, and global controls. The workspace breadcrumb shows the
+ * membership-validated active workspace (Phase 3); the page label
+ * derives from the current route. Search and notifications remain
+ * visibly disabled future capabilities — they perform no action and
+ * imply no live data.
  */
-export function Topbar({ user }: { user: ProfileView }) {
+export function Topbar({
+  user,
+  workspaces,
+  activeWorkspace,
+}: {
+  user: ProfileView;
+  workspaces: WorkspaceSummary[];
+  activeWorkspace: WorkspaceSummary | null;
+}) {
   return (
     <header className="sticky top-0 z-30 flex h-(--app-topbar-height) shrink-0 items-center gap-2 border-b border-border bg-card px-4 sm:gap-3 sm:px-6 lg:px-8">
-      <MobileNavigation user={user} />
+      <MobileNavigation
+        user={user}
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspace?.id ?? null}
+      />
       <TopbarDivider className="lg:hidden" />
 
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
         <ol className="flex min-w-0 items-center gap-1.5">
-          <li className="hidden items-center gap-1.5 md:flex">
-            <span className="max-w-48 truncate text-sm text-muted-foreground">
-              {DEMO_WORKSPACE.name}
-            </span>
-            <ChevronRight
-              aria-hidden="true"
-              className="size-3.5 shrink-0 text-muted-foreground/60"
-            />
-          </li>
+          {activeWorkspace ? (
+            <li className="hidden items-center gap-1.5 md:flex">
+              <span
+                className="max-w-48 truncate text-sm text-muted-foreground"
+                title={activeWorkspace.name}
+              >
+                {activeWorkspace.name}
+              </span>
+              <ChevronRight
+                aria-hidden="true"
+                className="size-3.5 shrink-0 text-muted-foreground/60"
+              />
+            </li>
+          ) : null}
           <li>
-            <span
-              aria-current="page"
-              className="truncate text-sm font-medium text-foreground"
-            >
-              Overview
-            </span>
+            <TopbarPageTitle />
           </li>
         </ol>
       </nav>

@@ -16,6 +16,10 @@
 const APPROVED_INTERNAL_PATHS = new Set<string>([
   "/",
   "/reset-password",
+  "/accept-invitation",
+  "/onboarding/workspace",
+  "/settings/workspace",
+  "/settings/team",
 ]);
 
 export const DEFAULT_AUTHENTICATED_PATH = "/";
