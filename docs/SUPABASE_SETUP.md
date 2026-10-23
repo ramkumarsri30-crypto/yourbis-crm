@@ -262,16 +262,31 @@ After Sections 4–8b, exercise the flows end to end:
    its RLS policies allow).
 8. **Rename the workspace** from Settings → Workspace (owner/admin
    only) → the switcher and breadcrumb update without a page reload.
-9. **Invite a teammate** from Settings → Team with a second real
+   The sidebar's **Settings** entry (and the mobile drawer's) opens the
+   settings area; the tabs at the top switch between **Workspace** and
+   **Team** — both sections are reachable from every screen.
+9. **Create a second workspace**: open the workspace switcher →
+   **New workspace** → the creation screen renders (it also serves
+   existing members — "Cancel and return to …" brings you back), name
+   it, create → you land on the dashboard with the new workspace
+   active and selected in the switcher.
+10. **Invite a teammate** from Settings → Team with a second real
    address → the invitation appears as *Pending*; the email arrives
    via Resend with an Accept link.
-10. Open the link in a private window (signed out) → you are sent to
+11. Open the link in a private window (signed out) → you are sent to
     sign-in and returned to `/accept-invitation?token=…` with the
     token preserved. Sign up/in with **exactly the invited address**,
     accept → you land on the dashboard inside that workspace with the
     granted role.
-11. Re-open the same acceptance link → rejected (single use). Try it
+12. Re-open the same acceptance link → rejected (single use). Try it
     signed in as a *different* email → rejected (email mismatch).
-12. As owner: change the teammate's role, remove them, leave the
+13. As owner: change the teammate's role, remove them, leave the
     workspace yourself — and verify the last owner can neither be
     removed nor demoted (the UI hides it; the database rejects it).
+
+When something fails in production, the failing server action logs one
+sanitized line to the Vercel function logs (operation, stage, coarse
+code, duration, and a `ref` id) and the on-screen error carries the
+same `(ref: …)` value — search the runtime logs for the reference to
+find the exact failure. The logs never contain invitation tokens,
+recipient addresses, credentials, or raw database error messages.

@@ -23,6 +23,10 @@ import {
   listMyWorkspaces,
   writeActiveWorkspaceCookie,
 } from "@/lib/workspace/context";
+import {
+  logWorkspaceFailure,
+  withReference,
+} from "@/lib/workspace/diagnostics";
 import { mapWorkspaceDbError } from "@/lib/workspace/errors";
 import {
   workspaceFormString,
@@ -70,13 +74,18 @@ export async function createWorkspaceAction(
 ): Promise<WorkspaceFormState> {
   const name = workspaceFormString(formData, "workspaceName");
 
+  // Echo the submitted value on every recoverable failure: React
+  // resets uncontrolled inputs to their defaultValue after the action
+  // completes, so without this the typed name would vanish.
+  const values = { workspaceName: name };
+
   const nameError = validateWorkspaceName(name);
   if (nameError) {
-    return { errors: { workspaceName: nameError } };
+    return { errors: { workspaceName: nameError }, values };
   }
 
   if (!isSupabaseConfigured()) {
-    return { errors: {}, formError: CONFIGURATION_REQUIRED_MESSAGE };
+    return { errors: {}, values, formError: CONFIGURATION_REQUIRED_MESSAGE };
   }
 
   // Authentication only — the RPC derives the creator from auth.uid()
@@ -85,13 +94,52 @@ export async function createWorkspaceAction(
   const supabase = await createClient();
 
   // Atomic RPC: organization + owner membership in one transaction.
+  // Duration is measured for the sanitized diagnostic trail (never
+  // logged: the org name, caller identity, or any token).
+  const rpcStartedAt = Date.now();
   const { data: organizationId, error } = await supabase.rpc(
     "create_organization",
     { p_name: name }
   );
 
   if (error || typeof organizationId !== "string") {
-    return { errors: {}, formError: mapWorkspaceDbError("create-workspace", error) };
+    const reference = logWorkspaceFailure("create-workspace", {
+      stage: "rpc",
+      code: error?.code ?? null,
+      durationMs: Date.now() - rpcStartedAt,
+    });
+    return {
+      errors: {},
+      values,
+      formError: withReference(
+        mapWorkspaceDbError("create-workspace", error),
+        reference
+      ),
+    };
+  }
+
+  // The RPC created the owner membership atomically; this re-read
+  // verifies it through the caller's own RLS-filtered session before
+  // the active-workspace cookie is written (the cookie is a preference
+  // and must never name an organization the user does not belong to —
+  // the (crm) layout re-validates it on every render regardless).
+  const verificationStartedAt = Date.now();
+  const workspaces = await listMyWorkspaces(supabase);
+  const verified = workspaces.some((ws) => ws.id === organizationId);
+
+  if (!verified) {
+    logWorkspaceFailure("create-workspace", {
+      stage: "membership-verification",
+      code: null,
+      durationMs: Date.now() - verificationStartedAt,
+    });
+    // Do NOT write the cookie and do NOT claim failure to the user:
+    // creation succeeded (the RPC returned the id). Landing on "/"
+    // shows the verified state — the layout resolves the active
+    // workspace from the membership list, never from an unverified
+    // cookie value.
+    revalidatePath("/", "layout");
+    redirect("/");
   }
 
   // Make the new workspace active and land in the app.
@@ -190,12 +238,15 @@ export async function inviteMemberAction(
 
   const errors = validateInviteInput({ email, role });
   if (!hasNoWorkspaceErrors(errors)) {
-    return { errors };
+    return { errors, values: { inviteEmail: email, inviteRole: role } };
   }
 
   const inviteRole = parseInviteRole(role);
   if (!inviteRole) {
-    return { errors: { inviteRole: "Choose a role for the invitation." } };
+    return {
+      errors: { inviteRole: "Choose a role for the invitation." },
+      values: { inviteEmail: email, inviteRole: role },
+    };
   }
 
   // Delivery cannot run without Resend — fail BEFORE creating anything
@@ -245,6 +296,7 @@ export async function inviteMemberAction(
   const rawToken = generateInvitationToken();
   const tokenHash = hashInvitationToken(rawToken);
 
+  const insertStartedAt = Date.now();
   const { data: inserted, error: insertError } = await supabase
     .from("organization_invitations")
     .insert({
@@ -259,9 +311,18 @@ export async function inviteMemberAction(
     .single();
 
   if (insertError || !inserted) {
+    const reference = logWorkspaceFailure("invite-member", {
+      stage: "db",
+      code: insertError?.code ?? null,
+      durationMs: Date.now() - insertStartedAt,
+    });
     return {
       errors: {},
-      formError: mapWorkspaceDbError("invite-member", insertError),
+      values: { inviteEmail: email, inviteRole: role },
+      formError: withReference(
+        mapWorkspaceDbError("invite-member", insertError),
+        reference
+      ),
     };
   }
 
@@ -279,6 +340,7 @@ export async function inviteMemberAction(
   }
 
   const sender = createEmailSender();
+  const emailStartedAt = Date.now();
   const result = await sender.sendInvitation({
     to: invitedEmail,
     inviterName: user.email ?? "A teammate",
@@ -291,10 +353,17 @@ export async function inviteMemberAction(
   revalidatePath("/settings/team", "page");
 
   if (!result.delivered) {
+    const reference = logWorkspaceFailure("invite-member", {
+      stage: "email",
+      code: null,
+      durationMs: Date.now() - emailStartedAt,
+    });
     return {
       errors: {},
-      formError:
+      formError: withReference(
         "The invitation was created, but the email could not be delivered. Try resending it from the list below.",
+        reference
+      ),
     };
   }
 
@@ -377,6 +446,7 @@ export async function resendInvitationAction(
   }
 
   const sender = createEmailSender();
+  const emailStartedAt = Date.now();
   const result = await sender.sendInvitation({
     to: invitation.invited_email,
     inviterName: user.email ?? "A teammate",
@@ -389,10 +459,17 @@ export async function resendInvitationAction(
   revalidatePath("/settings/team", "page");
 
   if (!result.delivered) {
+    const reference = logWorkspaceFailure("resend-invitation", {
+      stage: "email",
+      code: null,
+      durationMs: Date.now() - emailStartedAt,
+    });
     return {
       errors: {},
-      formError:
+      formError: withReference(
         "The invitation was refreshed, but the email could not be delivered. Try again in a moment.",
+        reference
+      ),
     };
   }
 
@@ -473,15 +550,24 @@ export async function acceptInvitationAction(
 
   // The RPC verifies token hash, status, expiry, and the confirmed
   // email match atomically, under a row lock, exactly once.
+  const rpcStartedAt = Date.now();
   const { data: organizationId, error } = await supabase.rpc(
     "accept_organization_invitation",
     { p_token: token }
   );
 
   if (error || typeof organizationId !== "string") {
+    const reference = logWorkspaceFailure("accept-invitation", {
+      stage: "rpc",
+      code: error?.code ?? null,
+      durationMs: Date.now() - rpcStartedAt,
+    });
     return {
       errors: {},
-      formError: mapWorkspaceDbError("accept-invitation", error),
+      formError: withReference(
+        mapWorkspaceDbError("accept-invitation", error),
+        reference
+      ),
     };
   }
 

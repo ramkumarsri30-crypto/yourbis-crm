@@ -20,6 +20,12 @@ import {
  * flips to a pending state the moment it is pressed (no dead clicks, no
  * full-page reload). On success the action redirects into the app; this
  * form never renders a success state.
+ *
+ * Value preservation: the input is uncontrolled, and React resets
+ * uncontrolled inputs to their `defaultValue` after a server action
+ * completes — so the submitted name is echoed back through the action
+ * state and used as `defaultValue`. A recoverable failure keeps what
+ * the user typed; a success redirects away with nothing to preserve.
  */
 export function CreateWorkspaceForm() {
   const [state, formAction] = useActionState(
@@ -31,6 +37,7 @@ export function CreateWorkspaceForm() {
 
   const nameError =
     localErrors.workspaceName ?? state.errors.workspaceName;
+  const submittedName = state.values?.workspaceName ?? "";
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
@@ -47,6 +54,7 @@ export function CreateWorkspaceForm() {
             autoComplete="organization"
             placeholder="Acme Inc."
             maxLength={120}
+            defaultValue={submittedName}
             className="h-10"
             onBlur={(event) => {
               const message = validateWorkspaceName(

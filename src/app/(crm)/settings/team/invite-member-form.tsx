@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useActionState, useId, useState } from "react";
 
 import { AuthFormField } from "@/components/auth/auth-form-field";
 import { FormFeedback, SubmitButton } from "@/components/shared/form-controls";
@@ -26,8 +26,12 @@ import {
  * caller's role, inserts under RLS, and only then attempts delivery —
  * the visible message never claims delivery before it happened.
  *
- * On success the form clears (fresh state for the next invite) and the
- * server-rendered invitation table refreshes via revalidatePath.
+ * Value preservation: submitted values are echoed back through the
+ * action state and re-seed the inputs as `defaultValue` (React resets
+ * uncontrolled inputs to their defaultValue after an action).
+ * Recoverable failures keep what was typed; success returns no values,
+ * so the same reset clears the form for the next invite and the
+ * invitation table below refreshes via revalidatePath.
  */
 export function InviteMemberForm({ actorRole }: { actorRole: WorkspaceRole }) {
   const [state, formAction] = useActionState(
@@ -35,7 +39,6 @@ export function InviteMemberForm({ actorRole }: { actorRole: WorkspaceRole }) {
     initialWorkspaceFormState
   );
   const [localErrors, setLocalErrors] = useState<WorkspaceFieldErrors>({});
-  const formRef = useRef<HTMLFormElement>(null);
   const emailId = useId();
   const roleId = useId();
 
@@ -43,15 +46,11 @@ export function InviteMemberForm({ actorRole }: { actorRole: WorkspaceRole }) {
     canInviteRole(actorRole, role)
   );
 
-  // Clear the inputs after a confirmed success (the invitation table
-  // below refreshes with the new pending row). The DOM reset is a
-  // direct manipulation; the stale local validation state is derived
-  // away below instead of being set in an effect.
-  useEffect(() => {
-    if (state.success) {
-      formRef.current?.reset();
-    }
-  }, [state.success]);
+  // Values echo back only on recoverable failures; success clears them.
+  const submittedEmail = state.success ? "" : (state.values?.inviteEmail ?? "");
+  const submittedRole = state.success
+    ? "member"
+    : (state.values?.inviteRole ?? "member");
 
   const emailError = state.success
     ? undefined
@@ -59,7 +58,7 @@ export function InviteMemberForm({ actorRole }: { actorRole: WorkspaceRole }) {
   const roleError = state.errors.inviteRole;
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4" noValidate>
+    <form action={formAction} className="space-y-4" noValidate>
       {state.formError ? (
         <FormFeedback tone="error">{state.formError}</FormFeedback>
       ) : null}
@@ -86,6 +85,7 @@ export function InviteMemberForm({ actorRole }: { actorRole: WorkspaceRole }) {
               autoComplete="off"
               placeholder="teammate@company.com"
               maxLength={320}
+              defaultValue={submittedEmail}
               className="h-10"
               onBlur={(event) => {
                 const message = validateInviteEmail(
@@ -105,7 +105,7 @@ export function InviteMemberForm({ actorRole }: { actorRole: WorkspaceRole }) {
             <select
               {...control}
               name="inviteRole"
-              defaultValue="member"
+              defaultValue={submittedRole}
               className="h-10 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             >
               {offeredRoles.map((role) => (

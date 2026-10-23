@@ -26,7 +26,7 @@ export interface NavItem {
   icon: LucideIcon;
   /** `available` renders a real link; `upcoming` renders a disabled control. */
   status: "available" | "upcoming";
-  /** Route for available items. Only "/" exists in Phase 1. */
+  /** Route for available items. Only "/" and the settings area exist today. */
   href?: string;
   /** Roadmap phase in which an upcoming item is planned. */
   phase?: number;
@@ -75,7 +75,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: "Settings",
         icon: Settings,
         status: "available",
-        href: "/settings/workspace",
+        href: "/settings",
       },
     ],
   },

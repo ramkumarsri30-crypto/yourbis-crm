@@ -142,13 +142,39 @@ server-rendered output never depends on the machine or viewer timezone.
   when it names a membership, otherwise the first one. The cookie is
   a UI preference, never an authorization — every read re-validates
   it, and data access stays RLS-bound regardless of which workspace
-  is "active".
+  is "active". The creation action additionally re-reads the
+  membership list and only writes the cookie when the newly created
+  organization appears in it (hotfix: never activate an unverified
+  workspace; the layout re-validates the cookie on every render
+  regardless).
+- **Workspace creation screen.** `/onboarding/workspace` serves BOTH
+  first-run onboarding (workspace-less users, routed there by the
+  (crm) layout) and additional-workspace creation (the switcher's
+  "New workspace" entry). It previously bounced existing members back
+  to `/`, making a second workspace impossible to create — fixed in
+  the Phase 3 hotfix.
+- **Settings area.** The sidebar/mobile "Settings" entry points at
+  `/settings`, which redirects to the default section; the shared
+  settings layout renders section tabs (Workspace, Team) plus the
+  workspace context line, so Team & invitations are discoverable from
+  every screen on desktop and mobile. Tabs are navigation only —
+  every settings page and action re-verifies membership and role
+  server-side.
 - **Invitations.** Raw tokens are 32 random bytes (base64url),
   delivered only inside the emailed link, stored solely as SHA-256
   hashes, expiring after 7 days, consumed exactly once under a row
   lock. Delivery runs through Resend (`src/lib/email/`), server-only,
   with honest not-configured/not-delivered states — the UI never
   implies an email was sent when it was not.
+- **Failure diagnostics.** Workspace server actions log one sanitized
+  line per expected failure (`src/lib/workspace/diagnostics.ts`):
+  operation, stage, coarse code, duration, and a random `ref` id that
+  is also appended to the on-screen message — production issues can
+  be correlated with Vercel runtime logs without ever logging
+  tokens, recipient addresses, credentials, or raw driver errors.
+  Form state echoes submitted values back to the client
+  (`WorkspaceFormState.values`) so recoverable failures preserve what
+  the user typed across React's post-action form reset.
 - **Database.** `supabase/migrations/` holds versioned migrations
   (RLS enabled, least-privilege column grants); pgTAP security
 tests live in `supabase/tests/`. See `docs/SUPABASE_SETUP.md`.
