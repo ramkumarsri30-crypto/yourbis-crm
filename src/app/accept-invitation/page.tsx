@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthPanel } from "@/components/auth/auth-panel";
+import { getAuthenticatedUser } from "@/lib/auth/guards";
 import { isPlausibleInvitationToken } from "@/lib/invitations/tokens";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 import { AcceptInvitationForm } from "./accept-invitation-form";
+import { AcceptInvitationGate } from "./accept-invitation-gate";
 
 export const metadata: Metadata = {
   title: "Accept invitation — CRM Workspace",
@@ -16,14 +19,22 @@ export const instant = false;
  * Invitation acceptance screen (Phase 3). Reached from the "Accept
  * invitation" button in the invitation email. Lives OUTSIDE the CRM
  * shell on purpose: the invitee may have no workspace yet (the (crm)
- * layout would bounce them to onboarding), and unauthenticated visitors
- * are already sent to sign-in by the proxy with this URL — query string
- * included — as `next`, so the context survives the round trip.
+ * layout would bounce them to onboarding).
+ *
+ * The page renders for signed-in AND signed-out visitors (the proxy
+ * lets it through; see PUBLIC_PAGES in lib/supabase/proxy):
+ *
+ *   - Signed out: an explicit choice — "Create an account" for
+ *     invitees without one, "Sign in" for those who have — both
+ *     carrying the full acceptance URL (token included) as `next`
+ *     (see AcceptInvitationGate). This removes the previous dead end
+ *     where an invitee without an account saw only a sign-in form.
+ *   - Signed in: the acceptance form. Its server action re-verifies
+ *     the caller and hands the token to the acceptance RPC — the only
+ *     place real validation happens.
  *
  * The page deliberately performs NO token validation of its own: any
- * pre-check would leak which tokens exist. The server action's RPC is
- * the single validation path (hash lookup, status, expiry, confirmed
- * email match — atomically, once).
+ * pre-check would leak which tokens exist. Shape checking only.
  */
 export interface AcceptInvitationPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -76,6 +87,21 @@ export default async function AcceptInvitationPage({
     );
   }
 
+  // The full acceptance URL travels as `next` through sign-in/sign-up
+  // and back (safeRedirectPath allowlists /accept-invitation and keeps
+  // its query string), so the token survives the authentication hop.
+  const acceptUrl = `/accept-invitation?token=${encodeURIComponent(token)}`;
+
+  // Session check that never redirects: unauthenticated invitees get
+  // the sign-in / create-account choice instead of a login dead end.
+  // (Falls back to "signed out" when Supabase is unconfigured — the
+  // auth screens then explain the configuration.)
+  const user = isSupabaseConfigured() ? await getAuthenticatedUser() : null;
+
+  if (!user) {
+    return <AcceptInvitationGate acceptUrl={acceptUrl} />;
+  }
+
   return (
     <AuthPanel
       title="You're invited"
@@ -85,3 +111,4 @@ export default async function AcceptInvitationPage({
     </AuthPanel>
   );
 }
+

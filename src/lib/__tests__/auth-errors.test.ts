@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   CONFIGURATION_REQUIRED_MESSAGE,
+  isAuthRedirectUrlRejection,
   isConfigurationError,
+  logAuthFailure,
   mapAuthError,
+  withAuthReference,
 } from "@/lib/auth/errors";
 
 describe("mapAuthError — rate limiting", () => {
@@ -84,6 +87,82 @@ describe("mapAuthError — sign-up", () => {
   it("falls back to a generic sign-up message", () => {
     expect(mapAuthError("sign-up", { code: "????" }).message).toBe(
       "Unable to create your account. Please try again."
+    );
+  });
+
+  it("maps redirect-URL allowlist rejections to the actionable guidance", () => {
+    // Known-value matches of the auth server's stable wording.
+    for (const message of [
+      "The redirect URL is not allowed",
+      "the redirect URL provided is not allowed for this app",
+      "The redirect URI is not allowed.",
+    ]) {
+      const result = mapAuthError("sign-up", { code: null, status: 400, message });
+      expect(result.field).toBe("form");
+      expect(result.message).toContain("URL Configuration");
+      expect(result.message).not.toContain(message); // never reflected back
+    }
+  });
+
+  it("maps the redirect_uri_not_allowed code without relying on message text", () => {
+    const result = mapAuthError("sign-up", { code: "redirect_uri_not_allowed" });
+    expect(result.message).toContain("URL Configuration");
+  });
+});
+
+describe("isAuthRedirectUrlRejection", () => {
+  it("recognizes the known redirect-rejection wordings and code", () => {
+    expect(
+      isAuthRedirectUrlRejection({ message: "The redirect URL is not allowed" })
+    ).toBe(true);
+    expect(isAuthRedirectUrlRejection({ code: "redirect_uri_not_allowed" })).toBe(
+      true
+    );
+  });
+
+  it("rejects unrelated errors", () => {
+    expect(isAuthRedirectUrlRejection({ message: "Invalid login credentials" })).toBe(
+      false
+    );
+    expect(isAuthRedirectUrlRejection(null)).toBe(false);
+    expect(isAuthRedirectUrlRejection({})).toBe(false);
+  });
+});
+
+describe("logAuthFailure (sanitized diagnostics)", () => {
+  it("logs coarse detail only and returns a short reference", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const reference = logAuthFailure("sign-up", {
+        code: "some_code",
+        status: 400,
+        redirectRejection: false,
+        durationMs: 42,
+      });
+
+      expect(reference).toMatch(/^[0-9a-f]{8}$/);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const [label, detail] = errorSpy.mock.calls[0];
+      expect(label).toBe("auth sign-up failed");
+      expect(detail).toEqual({
+        action: "sign-up",
+        code: "some_code",
+        status: 400,
+        redirectUrlRejected: false,
+        durationMs: 42,
+        ref: reference,
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("never receives or logs raw provider messages", () => {
+    // The signature accepts coarse inputs only — verified by type and
+    // by the logged payload shape above. withAuthReference appends the
+    // reference so user reports correlate with the exact log line.
+    expect(withAuthReference("Safe message.", "a1b2c3d4")).toBe(
+      "Safe message. (ref: a1b2c3d4)"
     );
   });
 });

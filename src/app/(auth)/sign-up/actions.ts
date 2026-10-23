@@ -6,7 +6,10 @@ import { redirect } from "next/navigation";
 
 import {
   CONFIGURATION_REQUIRED_MESSAGE,
+  isAuthRedirectUrlRejection,
+  logAuthFailure,
   mapAuthError,
+  withAuthReference,
 } from "@/lib/auth/errors";
 import {
   formPassword,
@@ -36,6 +39,11 @@ import { createClient } from "@/lib/supabase/server";
  * The full name travels in `user_metadata` for profile initialization
  * later — and is treated as untrusted input there (re-sanitized before
  * any database write; see lib/auth/profile).
+ *
+ * Recoverable failures echo the submitted name/email (never passwords)
+ * so React's input reset doesn't wipe what the user typed, and
+ * Supabase-side failures are logged server-side with a sanitized
+ * reference id that also appears in the user-facing message.
  */
 export async function signUpAction(
   _prev: AuthFormState,
@@ -47,6 +55,8 @@ export async function signUpAction(
   const confirmPassword = formPassword(formData, "confirmPassword");
   const next = formString(formData, "next");
 
+  const values = { fullName, email };
+
   const errors = validateSignUpInput({
     fullName,
     email,
@@ -54,11 +64,11 @@ export async function signUpAction(
     confirmPassword,
   });
   if (!hasNoErrors(errors)) {
-    return { errors };
+    return { errors, values };
   }
 
   if (!isSupabaseConfigured()) {
-    return { errors: {}, formError: CONFIGURATION_REQUIRED_MESSAGE };
+    return { errors: {}, values, formError: CONFIGURATION_REQUIRED_MESSAGE };
   }
 
   // Confirmation emails must return to *this* deployment.
@@ -66,11 +76,13 @@ export async function signUpAction(
   if (!origin) {
     return {
       errors: {},
+      values,
       formError: "Unable to determine the application address. Please try again.",
     };
   }
 
   const supabase = await createClient();
+  const signUpStartedAt = Date.now();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -84,7 +96,24 @@ export async function signUpAction(
   });
 
   if (error) {
-    return { errors: {}, formError: mapAuthError("sign-up", error).message };
+    // Sanitized diagnostics: coarse status/code plus the fixed-value
+    // redirect-allowlist classification. Nothing user-identifying is
+    // logged, and the reference id lets a report be correlated with
+    // the exact Vercel log line.
+    const reference = logAuthFailure("sign-up", {
+      code: error.code ?? null,
+      status: error.status ?? null,
+      redirectRejection: isAuthRedirectUrlRejection(error),
+      durationMs: Date.now() - signUpStartedAt,
+    });
+    return {
+      errors: {},
+      values,
+      formError: withAuthReference(
+        mapAuthError("sign-up", error).message,
+        reference
+      ),
+    };
   }
 
   if (data.session) {

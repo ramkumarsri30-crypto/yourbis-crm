@@ -5,6 +5,14 @@
  * whether an account exists, provider configuration). Nothing from
  * `error.message` is ever shown or logged. We match on stable `code`
  * values and the HTTP status, with a deliberately generic default.
+ *
+ * Server-side diagnostics (logAuthFailure): expected failures are
+ * visible in the UI as mapped messages, while the server log carries
+ * enough SANITIZED detail to diagnose — action name, coarse status,
+ * stable code, and a random reference id that is appended to the
+ * user-facing message so a report can be correlated with the exact
+ * Vercel log line. NEVER logged: emails, passwords, names, raw
+ * provider messages (they can embed configuration detail).
  */
 
 export type AuthAction =
@@ -105,6 +113,18 @@ export function mapAuthError(
       if (code === "user_banned") {
         return { field: "form", message: "This account has been suspended." };
       }
+      // Known-value match, last resort: the auth server rejects the
+      // email-confirmation redirect when this deployment's address is
+      // not on the project's allowlist (Supabase Auth → URL
+      // Configuration). The fixed message never reflects the raw text
+      // back; it tells both the invitee and the owner what to do.
+      if (isRedirectUrlRejection(raw)) {
+        return {
+          field: "form",
+          message:
+            "Registration could not start because this site's email-link address is not approved yet. The workspace owner must add this deployment's URL to the Auth URL allowlist (Supabase → Authentication → URL Configuration) and then try again.",
+        };
+      }
       return { field: "form", message: MESSAGES[action].generic };
     }
 
@@ -136,3 +156,63 @@ export function isConfigurationError(error: unknown): boolean {
 /** Configuration guidance shown on auth screens when env vars are absent. */
 export const CONFIGURATION_REQUIRED_MESSAGE =
   "Authentication is not configured yet. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (see docs/SUPABASE_SETUP.md), then restart the server.";
+
+/**
+ * Known-value detection for redirect-URL rejections (fixed strings,
+ * never reflected back to the user). The auth server wording has been
+ * stable across Supabase versions; matching a handful of literals is
+ * safe and cannot be turned into an oracle. Exported for the actions'
+ * sanitized diagnostic logging (boolean only).
+ */
+export function isAuthRedirectUrlRejection(raw: {
+  code?: string | null;
+  status?: number | null;
+  message?: string | null;
+} | null | undefined): boolean {
+  const message = raw?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("redirect url is not allowed") ||
+    message.includes("redirect url provided is not allowed") ||
+    message.includes("the redirect uri is not allowed") ||
+    raw?.code === "redirect_uri_not_allowed"
+  );
+}
+
+const isRedirectUrlRejection = isAuthRedirectUrlRejection;
+
+/**
+ * Logs one sanitized auth failure line and returns a short reference
+ * for the user-facing message (mirrors lib/workspace/diagnostics).
+ * Coarse inputs only — status number and stable code string; raw
+ * messages stay out of logs except as this boolean classification.
+ */
+export function logAuthFailure(
+  action: AuthAction,
+  raw: {
+    code?: string | null;
+    status?: number | null;
+    redirectRejection?: boolean;
+    durationMs?: number | null;
+  }
+): string {
+  const reference = randomAuthReference();
+  console.error(`auth ${action} failed`, {
+    action,
+    code: raw.code ?? null,
+    status: raw.status ?? null,
+    redirectUrlRejected: raw.redirectRejection === true,
+    durationMs: raw.durationMs ?? null,
+    ref: reference,
+  });
+  return reference;
+}
+
+/** Appends a diagnostic reference to a safe user-facing message. */
+export function withAuthReference(message: string, reference: string): string {
+  return `${message} (ref: ${reference})`;
+}
+
+/** Short, non-sequential reference id. */
+function randomAuthReference(): string {
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+}

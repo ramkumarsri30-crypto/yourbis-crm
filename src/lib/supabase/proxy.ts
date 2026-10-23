@@ -42,9 +42,20 @@ const SIGNED_OUT_ONLY_PAGES = new Set<string>([
 /** Prefixes that are part of the auth machinery itself (always public). */
 const PUBLIC_PREFIXES = ["/auth"];
 
+/**
+ * Pages that render for BOTH signed-in and signed-out visitors. The
+ * invitation acceptance screen is the one such page: it shows a
+ * sign-in / create-account choice to unauthenticated invitees (with
+ * the full token URL preserved as `next`) and the acceptance form to
+ * authenticated ones. The page itself holds no privileged logic —
+ * the acceptance RPC re-authenticates and re-validates everything.
+ */
+const PUBLIC_PAGES = new Set<string>(["/accept-invitation"]);
+
 function isPublicPath(pathname: string): boolean {
   return (
     SIGNED_OUT_ONLY_PAGES.has(pathname) ||
+    PUBLIC_PAGES.has(pathname) ||
     PUBLIC_PREFIXES.some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     )

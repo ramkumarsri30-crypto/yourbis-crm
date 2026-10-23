@@ -5,7 +5,11 @@ import { AppShell } from "@/components/layout/app-shell";
 import { getAuthUserRecordFor, requireUser } from "@/lib/auth/guards";
 import { ensureProfile } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
-import { getWorkspaceContext } from "@/lib/workspace/context";
+import {
+  getWorkspaceContext,
+  resolveActiveWorkspace,
+} from "@/lib/workspace/context";
+import { ensureDefaultWorkspace, needsDefaultWorkspace } from "@/lib/workspace/ensure-default";
 
 // The shell renders the verified user's identity, so every route under
 // this layout is request-dependent (cookies). Allow blocking rendering
@@ -28,16 +32,23 @@ export const instant = false;
  * users.
  *
  * Phase 3: the shell also resolves the workspace context — the verified
- * membership list and the membership-validated active workspace. A user
- * with no workspace is sent to `/onboarding/workspace` (outside this
- * layout, so no redirect loop). The active-workspace cookie is a UI
- * preference only; every page and action re-validates membership
- * server-side.
+ * membership list and the membership-validated active workspace. Every
+ * account that owns no workspace yet (fresh sign-ups as well as users
+ * who only hold invited memberships) gets their default personal
+ * workspace provisioned here through the audited create_organization
+ * RPC (see lib/workspace/ensure-default) — roles in each workspace stay
+ * independent. A user who still ends up with no workspace (creation
+ * failed, e.g. database unreachable) is sent to `/onboarding/workspace`
+ * (outside this layout, so no redirect loop), whose create form surfaces
+ * real errors. The active-workspace cookie is a UI preference only;
+ * every page and action re-validates membership server-side.
  *
  * Latency (see the Phase 3 performance notes in docs/ARCHITECTURE.md):
  * the profile row and the membership list are fetched in PARALLEL
- * (Promise.all), and `listMyWorkspaces` is per-request cached
- * (React `cache`) so pages/actions under this layout never re-fetch it.
+ * (Promise.all), and `listMyWorkspaces` is per-request cached (React
+ * `cache`) so pages/actions under this layout never re-fetch it. The
+ * default-workspace check is a scan of that cached list — zero extra
+ * database reads for accounts that already own a workspace.
  *
  * With Supabase unconfigured (fresh clone, CI) there is no session, so
  * `/` redirects to `/sign-in`, which renders the configuration notice —
@@ -63,18 +74,37 @@ export default async function CrmLayout({ children }: { children: ReactNode }) {
     getWorkspaceContext(supabase),
   ]);
 
-  // No membership anywhere yet → focused workspace creation flow.
-  // (Database failures also surface here: the onboarding screen
-  // re-queries and its create action surfaces real errors.)
-  if (!workspaceContext.active) {
+  // Default-workspace provisioning: accounts owning nothing (fresh
+  // sign-ups; members invited into someone else's workspace) get their
+  // own workspace created automatically. No-op for existing owners.
+  let workspaces = workspaceContext.workspaces;
+  if (needsDefaultWorkspace(workspaces)) {
+    workspaces = await ensureDefaultWorkspace(supabase, {
+      displayName: user.displayName,
+    });
+  }
+
+  // Re-resolve the active workspace against the (possibly extended)
+  // list. The previous active id is a membership-verified value, so it
+  // is a safe stand-in for the cookie preference here; a fresh account
+  // (no prior active) lands on its first — the new default.
+  const active = resolveActiveWorkspace(
+    workspaces,
+    workspaceContext.active?.id ?? null
+  );
+
+  // Still no membership anywhere → focused workspace creation flow
+  // (default provisioning failed; the onboarding screen re-queries and
+  // its create action surfaces real errors).
+  if (!active) {
     redirect("/onboarding/workspace");
   }
 
   return (
     <AppShell
       user={user}
-      workspaces={workspaceContext.workspaces}
-      activeWorkspace={workspaceContext.active}
+      workspaces={workspaces}
+      activeWorkspace={active}
     >
       {children}
     </AppShell>

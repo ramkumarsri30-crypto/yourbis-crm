@@ -70,6 +70,7 @@ export function SignUpForm({ nextParam }: { nextParam: string | null }) {
                 name="fullName"
                 autoComplete="name"
                 placeholder="Alex Morgan"
+                defaultValue={state.values?.fullName ?? ""}
                 className="h-10"
                 onBlur={(event) =>
                   validate("fullName", event.currentTarget.value, validateFullName)
@@ -86,6 +87,7 @@ export function SignUpForm({ nextParam }: { nextParam: string | null }) {
                 name="email"
                 autoComplete="email"
                 placeholder="name@company.com"
+                defaultValue={state.values?.email ?? ""}
                 className="h-10"
                 onBlur={(event) => validate("email", event.currentTarget.value, validateEmail)}
               />

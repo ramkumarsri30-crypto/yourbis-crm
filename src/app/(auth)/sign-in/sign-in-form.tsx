@@ -49,6 +49,7 @@ export function SignInForm({
             name="email"
             autoComplete="email"
             placeholder="name@company.com"
+            defaultValue={state.values?.email ?? ""}
             className="h-10"
             onBlur={(event) => validate("email", event.currentTarget.value, validateEmail)}
           />

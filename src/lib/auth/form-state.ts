@@ -18,6 +18,17 @@ export interface AuthFormState {
     title: string;
     description: string;
   };
+  /**
+   * Recoverable-failure echo of non-secret submitted values. React
+   * resets uncontrolled inputs to their defaultValue after an action
+   * completes, so without this the typed name/email would vanish on a
+   * failed submit. Passwords are NEVER echoed (not even round-tripped
+   * through the server response).
+   */
+  values?: {
+    fullName?: string;
+    email?: string;
+  };
 }
 
 export const initialAuthFormState: AuthFormState = {

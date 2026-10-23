@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 
 import {
   CONFIGURATION_REQUIRED_MESSAGE,
+  logAuthFailure,
   mapAuthError,
+  withAuthReference,
 } from "@/lib/auth/errors";
 import {
   formPassword,
@@ -25,6 +27,10 @@ import { createClient } from "@/lib/supabase/server";
  * validation is UX only), authenticates against Supabase Auth, and
  * redirects to the validated `next` path on success.
  *
+ * Recoverable failures echo the submitted email (never the password).
+ * Supabase-side failures are logged with a sanitized reference id that
+ * also appears in the user-facing message.
+ *
  * Cookie writes (the session) are allowed here: server actions may set
  * cookies.
  */
@@ -36,21 +42,38 @@ export async function signInAction(
   const password = formPassword(formData);
   const next = formString(formData, "next");
 
+  const values = { email };
+
   const errors = validateSignInInput({ email, password });
   if (!hasNoErrors(errors)) {
-    return { errors };
+    return { errors, values };
   }
 
   if (!isSupabaseConfigured()) {
-    return { errors: {}, formError: CONFIGURATION_REQUIRED_MESSAGE };
+    return { errors: {}, values, formError: CONFIGURATION_REQUIRED_MESSAGE };
   }
 
   const supabase = await createClient();
+  const signInStartedAt = Date.now();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    // Safe message only (identical for unknown email vs. wrong password).
-    return { errors: {}, formError: mapAuthError("sign-in", error).message };
+    // Safe message only (identical for unknown email vs. wrong password);
+    // the sanitized log line carries the coarse code/status for the
+    // operator, the reference id correlates it with the user's report.
+    const reference = logAuthFailure("sign-in", {
+      code: error.code ?? null,
+      status: error.status ?? null,
+      durationMs: Date.now() - signInStartedAt,
+    });
+    return {
+      errors: {},
+      values,
+      formError: withAuthReference(
+        mapAuthError("sign-in", error).message,
+        reference
+      ),
+    };
   }
 
   revalidatePath("/", "layout");

@@ -38,6 +38,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
     ? `/sign-in?next=${encodeURIComponent(next)}`
     : "/sign-in";
 
+  // Invitees arriving from the acceptance screen get a contextual
+  // nudge: the account email must match the invited email exactly or
+  // acceptance will fail later.
+  const isInvitationFlow = next?.startsWith("/accept-invitation") ?? false;
+
   return (
     <AuthPanel
       title="Create your account"
@@ -55,7 +60,17 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
       }
     >
       {configured ? (
-        <SignUpForm nextParam={next} />
+        <div className="space-y-4">
+          {isInvitationFlow ? (
+            <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm text-foreground">
+              You&apos;re accepting a workspace invitation — create the
+              account with the{" "}
+              <span className="font-medium">exact email address</span> the
+              invitation was sent to.
+            </p>
+          ) : null}
+          <SignUpForm nextParam={next} />
+        </div>
       ) : (
         <SupabaseConfigNotice />
       )}
