@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { AppShell } from "@/components/layout/app-shell";
 
 /**
@@ -6,6 +8,9 @@ import { AppShell } from "@/components/layout/app-shell";
  * while future modules (leads, contacts, deals, …) will live alongside
  * it under this same shell.
  */
-export default function CrmLayout({ children }: LayoutProps<"/">) {
+// Explicit prop typing (instead of the global `LayoutProps` helper) keeps
+// `tsc --noEmit` working in fresh clones/CI, where next-env.d.ts has not
+// been generated yet. See AGENTS.md rule on reproducible typechecks.
+export default function CrmLayout({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }

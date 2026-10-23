@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -28,7 +29,10 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Explicit prop typing (instead of the global `LayoutProps` helper) keeps
+// `tsc --noEmit` working in fresh clones/CI, where next-env.d.ts has not
+// been generated yet. See AGENTS.md rule on reproducible typechecks.
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"

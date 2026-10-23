@@ -32,6 +32,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Generates next-env.d.ts + .next/types so generated global route
+      # types (PageProps, LayoutProps, …) are available to tsc even in a
+      # fresh clone where no `next dev`/`next build` has run yet.
+      - name: Generate Next.js route types
+        run: npx next typegen
+
       - name: Type check
         run: npm run typecheck
 
